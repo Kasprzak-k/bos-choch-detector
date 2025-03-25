@@ -1,0 +1,700 @@
+// © Arthur Kasprzak
+
+//@version=5
+indicator("PARK Oscillator with BOS Percentage Change", overlay = false, max_labels_count = 500, max_lines_count = 500)
+
+smoothing = input.int(
+   10
+ , "Smoothing"
+ , minval = 1
+ , group = "Settings"
+ , tooltip = "Specifies the degree of smoothing applied to the oscillator. Higher values result in smoother but 
+     potentially less responsive signals."
+ )
+
+average = input.int(
+   20
+ , "Average Length"
+ , minval = 1
+ , group = "Settings"
+ , tooltip = "Sets the length of the moving average applied to the oscillator, affecting its sensitivity and smoothness."
+ )
+
+pivot_length = input.int(
+   30
+ , "Pivot Length"
+ , minval = 1
+ , group = "Settings"
+ , tooltip = "Determines the length of the pivot points used in calculating the oscillator. Longer lengths can provide 
+     a more stable but less responsive signal."
+ )
+
+pivot_length_forward = input.int(
+   20
+ , "Pivot Forward Length"
+ , minval = 1
+ , group = "Settings"
+ , tooltip = "Specifies the forward-looking length for pivot points, affecting how the oscillator anticipates 
+     future price movements. This directly impacts the delay in finding a pivot."
+ )
+
+max_high_length = input.int(
+   20
+ , "Max Length"
+ , minval = 1
+ , group = "Settings"
+ , tooltip = "Sets the maximum length to consider for calculating the highest values in the oscillator."
+ )
+
+min_low_length = input.int(
+   20
+ , "Min Length"
+ , minval = 1
+ , group = "Settings"
+ , tooltip = "Defines the minimum length for calculating the lowest values in the oscillator."
+ )
+
+quick_update = input.bool(
+   false
+ , "Quick Update"
+ , group = "Settings"
+ , tooltip = "Activates a faster update mode for the oscillator's extremities, which may result in less stable 
+     range boundaries."
+ )
+
+accentuate = input.bool(
+   true
+ , "Scale Offset"
+ , group = "Settings"
+ , tooltip = "When enabled, delays updating minimum and maximum values to enhance signal directionality, allowing the 
+     signal to occasionally exceed normal bounds."
+ )
+
+candle_color = input.bool(
+   false
+ , "Candle Color"
+ , group = "Settings"
+ , tooltip = "Enables coloring of candles based on the current directional signal of the oscillator."
+ )
+
+enable_labels = input.bool(
+   true
+ , "Enable BOS/CHoCH Labels"
+ , group = "Labels"
+ , tooltip = "Activates the display of BOS (Break of Structure) and CHoCH (Change of Character) labels on the chart."
+ )
+
+enable_visual_padding = input.bool(
+   true
+ , "Visual Padding"
+ , group = "Labels"
+ , inline = "Padding"
+ )
+
+padding_level = input.int(
+   30
+ , ""
+ , minval = 0
+ , group = "Labels"
+ , inline = "Padding"
+ , tooltip = "Turns on additional visual padding at the top and bottom of the chart to accommodate labels.\n
+     Determines the amount of visual padding added to the chart for label display."
+ )
+
+right = input.int(
+   20
+ , "Divergence Pivot"
+ , minval = 1
+ , group = "Divergence"
+ , tooltip = "Defines the number of bars to the right of the pivot in divergence calculations, influencing the 
+     oscillator's responsiveness."
+ )
+
+left = input.int(
+   20
+ , "Divergence Pivot Forward"
+ , minval = 1
+ , group = "Divergence"
+ , tooltip = "Directly impacts latency. Longer periods results in more accurate results at the sacrifice of delay."
+ )
+
+upper_range = input.int(
+   500
+ , "Upper Range"
+ , minval = 0
+ , group = "Divergence"
+ , tooltip = "Sets the upper range limit for divergence calculations, influencing the oscillator's sensitivity to 
+     larger trends."
+ )
+
+lower_range = input.int(
+   25
+ , "Lower Range"
+ , minval = 0
+ , group = "Divergence"
+ , tooltip = "Determines the lower range limit for divergence calculations, affecting the oscillator's sensitivity to 
+     shorter trends."
+ )
+
+labels = input.string(
+   "Symbol"
+ , "Divergence Label Style"
+ , ["Text", "Symbol"]
+ , group = "Divergence"
+ , tooltip = "Allows selection of the label style for divergence indicators, with options for text or symbolic 
+     representation."
+ )
+
+enable_regular_bullish = input.bool(
+   true
+ , "Regular Bullish"
+ , group = "Divergence"
+ , tooltip = "Activates the detection and marking of regular bullish divergences in the oscillator."
+ )
+
+enable_hidden_bullish = input.bool(
+   false
+ , "Hidden Bullish"
+ , group = "Divergence"
+ , tooltip = "Enables the identification and display of hidden bullish divergences."
+ )
+
+enable_regular_bearish = input.bool(
+   true
+ , "Regular Bearish"
+ , group = "Divergence"
+ , tooltip = "Turns on the feature to detect and highlight regular bearish divergences."
+ )
+
+enable_hidden_bearish = input.bool(
+   false
+ , "Hidden Bearish"
+ , group = "Divergence"
+ , tooltip = "Activates the functionality for detecting and displaying hidden bearish divergences."
+ )
+
+bullish_color_min = input.color(
+   #52FF52
+ , "Bullish"
+ , group = "Color"
+ , inline = "Bullish"
+ )
+
+bullish_color_max = input.color(
+   #00AA00
+ , ""
+ , group = "Color"
+ , inline = "Bullish"
+ , tooltip = "Determines the minimum/maximum color gradient for bullish signals, impacting the chart's visual appearance."
+ )
+
+bearish_color_min = input.color(
+   #FF5252
+ , "Bearish"
+ , group = "Color"
+ , inline = "Bearish"
+ )
+
+bearish_color_max = input.color(
+   #AA0000
+ , ""
+ , group = "Color"
+ , inline = "Bearish"
+ , tooltip = "Defines the minimum/maximum color gradient for bearish signals, affecting their visual representation."
+ )
+
+average_color = input.color(
+   #ff9a16
+ , "Average"
+ , group = "Color"
+ , tooltip = "Specifies the color for the average line of the oscillator, enhancing chart readability."
+ )
+
+choch_bullish_color = input.color(
+   #22ff22
+ , "CHoCH"
+ , group = "Color"
+ , inline = "CHoCH"
+ )
+
+choch_bearish_color = input.color(
+   #FF2222
+ , ""
+ , group = "Color"
+ , inline = "CHoCH"
+ , tooltip = "Sets the color for bullish/bearish CHoCH (Change of Character) signals."
+ )
+
+premium_color = input.color(
+   #FF2222
+ , "Premium/Discount"
+ , group = "Color"
+ , inline = "Boundry"
+ )
+
+discount_color = input.color(
+   #22ff22
+ , ""
+ , group = "Color"
+ , inline = "Boundry"
+ , tooltip = "Determines the color for the premium/discount zone in the oscillator's visual representation."
+ )
+
+text_color = input.color(
+   #EEEEEE
+ , "Text Color"
+ , group = "Color"
+ , tooltip = "Sets the color for the text in BoS/CHoCH labels"
+ )
+
+regular_bullish_color = input.color(
+   #55FF77
+ , "Regular Bullish"
+ , group = "Color"
+ , tooltip = "Defines the color used to represent regular bullish divergences."
+ )
+
+hidden_bullish_color = input.color(
+   #5577FF
+ , "Hidden Bullish"
+ , group = "Color"
+ , tooltip = "Specifies the color for hidden bullish divergences."
+ )
+
+regular_bearish_color = input.color(
+   #FF3333
+ , "Regular Bearish"
+ , group = "Color"
+ , tooltip = "Sets the color for regular bearish divergence signals."
+ )
+
+hidden_bearish_color = input.color(
+   #FF8833
+ , "Hidden Bearish"
+ , group = "Color"
+ , tooltip = "Determines the color for hidden bearish divergences."
+ )
+
+text_color_div = input.color(
+   #000000
+ , "Divergence Text Color"
+ , group = "Color"
+ , tooltip = "Specifies the color for the text in divergence labels."
+ )
+
+
+type nibble
+    bool a = na
+    bool b = na
+    bool c = na
+    bool d = na
+
+in_range(bool cond, int lower_range, int upper_range) =>
+    bars = ta.barssince(cond == true)
+    lower_range <= bars and bars <= upper_range
+
+divergence(
+ float source, 
+ int right, 
+ int left, 
+ int upper_range, 
+ int lower_range, 
+ bool enable_regular_bullish, 
+ color regular_bullish_color,
+ bool enable_hidden_bullish, 
+ color hidden_bullish_color,
+ bool enable_regular_bearish, 
+ color regular_bearish_color,
+ bool enable_hidden_bearish, 
+ color hidden_bearish_color,
+ string labels,
+ color text_color) =>
+    repaint = barstate.ishistory or barstate.isconfirmed
+    
+    pl = na(ta.pivotlow(source, left, right)) ? false : true
+    ph = na(ta.pivothigh(source, left, right)) ? false : true
+
+    source_hl = source[right] > ta.valuewhen(pl, source[right], 1) and in_range(pl[1], lower_range, upper_range)
+    price_ll = low[right] < ta.valuewhen(pl, low[right], 1)
+    bullish_condition = enable_regular_bullish and price_ll and source_hl and pl and repaint
+    
+    oscLL = source[right] < ta.valuewhen(pl, source[right], 1) and in_range(pl[1], lower_range, upper_range)
+    priceHL = low[right] > ta.valuewhen(pl, low[right], 1)
+    hidden_bullish_condition = enable_hidden_bullish and priceHL and oscLL and pl and repaint
+    
+    oscLH = source[right] < ta.valuewhen(ph, source[right], 1) and in_range(ph[1], lower_range, upper_range)
+    priceHH = high[right] > ta.valuewhen(ph, high[right], 1)
+    bearish_condition = enable_regular_bearish and priceHH and oscLH and ph and repaint
+    
+    oscHH = source[right] > ta.valuewhen(ph, source[right], 1) and in_range(ph[1], lower_range, upper_range)
+    priceLH = high[right] < ta.valuewhen(ph, high[right], 1)
+    hidden_bearish_condition = enable_hidden_bearish and priceLH and oscHH and ph and repaint
+    
+    offset = -right
+
+    var float current_bullish_value = 0
+    var int current_bull_idx = 0
+    var float last_bullish_value = 0
+    var int last_bullish_idx = 0
+    var float current_hidden_bullish_value = 0
+    var int current_hidden_bullish_idx = 0
+    var float last_hidden_bullish_value = 0
+    var int last_hidden_bullish_idx = 0
+    var float current_bearish_value = 0
+    var int current_bearish_idx = 0
+    var float last_bearish_value = 0
+    var int last_bearish_idx = 0
+    var float current_hidden_bearish_value = 0
+    var int current_hidden_bearish_idx = 0
+    var float last_hidden_bearish_idx = 0
+    var int last_hidden_bearish_value = 0
+
+    if pl
+        last_bullish_value := current_bullish_value
+        last_bullish_idx := current_bull_idx
+        current_bullish_value := source[right]
+        current_bull_idx := bar_index - right
+        last_hidden_bullish_value := current_hidden_bullish_value
+        last_hidden_bullish_idx := current_hidden_bullish_idx
+        current_hidden_bullish_value := source[right]
+        current_hidden_bullish_idx := bar_index - right
+
+    if ph
+        last_bearish_value := current_bearish_value
+        last_bearish_idx := current_bearish_idx
+        current_bearish_value := source[right]
+        current_bearish_idx := bar_index - right
+        last_hidden_bearish_idx := current_hidden_bearish_value
+        last_hidden_bearish_value := current_hidden_bearish_idx
+        current_hidden_bearish_value := source[right]
+        current_hidden_bearish_idx := bar_index - right
+
+    label_style_bullish = switch labels
+        "Text" => label.style_label_up
+        "Symbol" => label.style_triangleup
+        => label.style_none
+
+    label_style_bearish = switch labels
+        "Text" => label.style_label_down
+        "Symbol" => label.style_triangledown
+        => label.style_none
+
+    size = switch labels
+        "Text" => size.small
+        "Symbol" => size.tiny
+        => size.auto
+
+    distance = 20
+
+    if bullish_condition
+        line.new(last_bullish_idx, last_bullish_value, current_bull_idx, current_bullish_value
+         , width = 2, color = regular_bullish_color)
+         
+        if labels != "Disabled"
+            label.new(bar_index - right, source[right] - distance, labels == "Text" ? "Bullish" : ""
+             , color = regular_bullish_color, textcolor = text_color, style = label_style_bullish, size = size
+             , tooltip = "Bullish")
+
+    if hidden_bullish_condition
+        line.new(last_hidden_bullish_idx, last_hidden_bullish_value, current_hidden_bullish_idx
+         , current_hidden_bullish_value, width = 2, color = hidden_bullish_color)
+         
+        if labels != "Disabled"
+            label.new(bar_index - right, source[right] - distance, labels == "Text" ? "Hidden Bullish" : ""
+             , color = hidden_bullish_color, textcolor = text_color, style = label_style_bullish, size = size
+             , tooltip = "Hidden Bullish")
+
+    if bearish_condition
+        line.new(last_bearish_idx, last_bearish_value, current_bearish_idx, current_bearish_value
+         , width = 2, color = regular_bearish_color)
+         
+        if labels != "Disabled"
+            label.new(bar_index - right, source[right] + distance, labels == "Text" ? "Bearish" : ""
+             , color = regular_bearish_color, textcolor = text_color, style = label_style_bearish, size = size
+             , tooltip = "Bearish")
+
+    if hidden_bearish_condition
+        line.new(last_hidden_bearish_value, last_hidden_bearish_idx, current_hidden_bearish_idx
+         , current_hidden_bearish_value, width = 2, color = hidden_bearish_color)
+         
+        if labels != "Disabled"
+            label.new(bar_index - right, source[right] + distance, labels == "Text" ? "Hidden Bearish" : ""
+             , color = hidden_bearish_color, textcolor = text_color, style = label_style_bearish, size = size
+             , tooltip = "Hidden Bearish")
+
+    nibble.new(bullish_condition
+     , hidden_bullish_condition
+     , bearish_condition
+     , hidden_bearish_condition)
+
+method max_size(int[] self, int length)=>
+    if self.size() > length
+        self.shift()
+
+var active_up = false
+var active_down = false
+
+ph = ta.pivothigh(high, pivot_length, pivot_length_forward)
+current_ph = fixnan(ph)
+
+pl = ta.pivotlow(low, pivot_length, pivot_length_forward)
+current_pl = fixnan(pl)
+
+if not na(ph)
+    active_up := true
+    
+if not na(pl)
+    active_down := true
+
+max = ta.highest(high, max_high_length)
+min = ta.lowest(low, min_low_length)
+
+var float top = na
+var float bottom = na
+
+var bool polarity = false
+
+bos = false
+choch = false
+
+hh = high > current_ph
+ll = low < current_pl
+
+hh_neg = hh and not hh[1]
+ll_neg = ll and not ll[1]
+
+var int bos_up_count = 0
+var int bos_down_count = 0
+
+var bos_up_array = array.new<int>()
+var bos_down_array = array.new<int>()
+
+if hh_neg
+    if active_up
+        if polarity
+            bos := true
+            bos_up_count += 1
+
+    if not polarity
+        choch := true
+
+        if bos_down_count != 0
+            bos_down_array.push(bos_down_count)
+
+        bos_up_count := 0
+        bos_down_count := 0
+
+    polarity := true
+    active_up := false
+
+    bottom := current_pl <= bottom ? (quick_update ? (bottom > min ? bottom : min) : bottom) : current_pl
+
+if ll_neg
+    if active_down
+        if not polarity
+            bos := true
+            bos_down_count += 1
+
+    if polarity
+        choch := true
+        if bos_up_count != 0
+            bos_up_array.push(bos_up_count)
+            
+        bos_up_count := 0
+        bos_down_count := 0
+
+    polarity := false
+    active_down := false
+
+    top := current_ph >= top ? (quick_update ? (top < max ? max : top) : top) : current_ph
+
+bos_up_array.max_size(20)
+bos_down_array.max_size(20)
+
+bullish_bos_max = math.max(1, bos_up_array.max())
+bearish_bos_max = math.max(1, bos_down_array.max())
+
+bullish_color = color.from_gradient(bos_up_count, 0, bullish_bos_max, bullish_color_min, bullish_color_max)
+bearish_color = color.from_gradient(bos_down_count, 0, bearish_bos_max, bearish_color_min, bearish_color_max)
+
+if high > max[1] and high > top
+    top := max
+
+if low < min[1] and low < bottom
+    bottom := min
+
+alpha = color.new(color.black, 100)
+polarity_color = polarity ? bullish_color : bearish_color
+
+center = math.avg(top, bottom)
+
+offset = accentuate ? 1 : 0
+
+scaled_price = -100 + (close - bottom[offset]) * 200 / (top[offset] - bottom[offset])
+
+price = ta.sma(scaled_price, smoothing)
+avg = ta.wma(price, average)
+
+barcolor(candle_color ? polarity_color : na)
+
+plot(avg, "Average", average_color)
+
+mx = plot(100, "Top", premium_color)
+c = plot(0, "Center", color.gray)
+mn = plot(-100, "Bottom", discount_color)
+
+fill(c, mx, 100, 0, color.new(premium_color, 87), alpha, "Premium Zone")
+fill(c, mn, 0, -100, alpha, color.new(discount_color, 87), "Discount Zone")
+
+plot(price, "Price", polarity_color)
+
+plotshape(enable_labels and polarity and bos ? math.min(-120, price - 20) : na, "BOS Bullish"
+ , shape.triangleup, location.absolute, bullish_color, 0, "BOS", text_color, true, size.tiny)
+
+plotshape(enable_labels and not polarity and bos ? math.max(110, price + 10) : na, "BOS Bullish"
+ , shape.triangledown, location.absolute, bearish_color, 0, "BOS", text_color, true, size.tiny)
+
+plotshape(enable_labels and polarity and choch ? math.min(-120, price - 20) : na, "CHoCH Bullish"
+ , shape.circle, location.absolute, choch_bullish_color, 0, "ChoCH", text_color, true, size.tiny)
+
+plotshape(enable_labels and not polarity and choch ? math.max(110, price + 10) : na, "CHoCH Bullish"
+ , shape.circle, location.absolute, choch_bearish_color, 0, "ChoCH", text_color, true, size.tiny)
+
+
+plot(enable_visual_padding ? 110 + padding_level : na, "buffer", alpha, editable = false, display = display.pane)
+plot(enable_visual_padding ? -100 + -padding_level : na, "buffer", alpha, editable = false, display = display.pane)
+
+div_alerts = divergence(price
+ , right
+ , left
+ , upper_range
+ , lower_range
+ , enable_regular_bullish
+ , regular_bullish_color
+ , enable_hidden_bullish
+ , hidden_bullish_color
+ , enable_regular_bearish
+ , regular_bearish_color
+ , enable_hidden_bearish
+ , hidden_bearish_color
+ , labels
+ , text_color)
+
+
+alertcondition(polarity and bos, "Bullish BOS")
+alertcondition(not polarity and bos, "Bearish BOS") 
+
+alertcondition(polarity and choch, "Bullish CHoCH")
+alertcondition(not polarity and choch, "Bearish CHoCH")
+
+alertcondition(div_alerts.a, "Bullish Divergence")
+alertcondition(div_alerts.b, "Hidden Bullish Divergence")
+alertcondition(div_alerts.c, "Bearish Divergence")
+alertcondition(div_alerts.d, "Hidden Bearish Divergence")
+
+alertcondition(ta.crossover(price, avg), "Cross Over Average")
+alertcondition(ta.crossunder(price, avg), "Cross Under Average")
+
+// Condição combinada para qualquer um dos eventos
+bool qualquerAlerta = (polarity and bos) or (not polarity and bos) or (polarity and choch) or (not polarity and choch)
+
+// Alertcondition para o alerta único
+alertcondition(qualquerAlerta, "Qualquer BOS ou CHoCH")
+
+
+// Variáveis para armazenar os preços nos momentos de BOS
+var float bullish_bos_price = na
+var float bearish_bos_price = na
+
+// Variáveis para armazenar as porcentagens máximas
+var float max_bullish_percentage = na
+var float max_bearish_percentage = na
+
+// Variáveis para controlar o estado atual
+var bool is_bullish_bos_active = false
+var bool is_bearish_bos_active = false
+
+// Contadores de barras após o BOS
+var int bars_after_bullish_bos = 0
+var int bars_after_bearish_bos = 0
+
+// Armazenar os preços nos momentos de BOS e ativar o estado
+if polarity and bos
+    bullish_bos_price := open  // Usar o preço de abertura da vela
+    bearish_bos_price := na
+    max_bullish_percentage := 0  // Iniciar a porcentagem máxima
+    is_bullish_bos_active := true
+    is_bearish_bos_active := false
+    bars_after_bullish_bos := 0  // Resetar o contador de barras
+
+if not polarity and bos
+    bearish_bos_price := open  // Usar o preço de abertura da vela
+    bullish_bos_price := na
+    max_bearish_percentage := 0  // Iniciar a porcentagem máxima
+    is_bearish_bos_active := true
+    is_bullish_bos_active := false
+    bars_after_bearish_bos := 0  // Resetar o contador de barras
+
+// Incrementar os contadores de barras
+if is_bullish_bos_active
+    bars_after_bullish_bos += 1
+
+if is_bearish_bos_active
+    bars_after_bearish_bos += 1
+
+// Calcular a porcentagem máxima de distância percorrida após Bullish BOS
+if is_bullish_bos_active
+    float current_percentage = (close - bullish_bos_price) / bullish_bos_price * 100
+    if current_percentage > max_bullish_percentage
+        max_bullish_percentage := current_percentage
+
+// Calcular a porcentagem máxima de distância percorrida após Bearish BOS
+if is_bearish_bos_active
+    float current_percentage = (close - bearish_bos_price) / bearish_bos_price * 100
+    if current_percentage < max_bearish_percentage or na(max_bearish_percentage)
+        max_bearish_percentage := current_percentage
+
+// Variáveis para armazenar os preços máximos/mínimos nas primeiras velas (direção contrária ao BOS)
+var float min_bullish_price = na  // Mínimo após Bullish BOS
+var float max_bearish_price = na  // Máximo após Bearish BOS
+
+// Reinicializar as variáveis quando um novo BOS for detectado
+if polarity and bos
+    min_bullish_price := low  // Inicializar com o preço atual (direção contrária ao Bullish BOS)
+    max_bearish_price := na   // Resetar para Bearish BOS
+
+if not polarity and bos
+    max_bearish_price := high // Inicializar com o preço atual (direção contrária ao Bearish BOS)
+    min_bullish_price := na   // Resetar para Bullish BOS
+
+// Atualizar o preço mínimo nas primeiras 3 velas após Bullish BOS
+if is_bullish_bos_active
+    if low < min_bullish_price or na(min_bullish_price)
+        min_bullish_price := low
+
+// Atualizar o preço máximo nas primeiras 3 velas após Bearish BOS
+if is_bearish_bos_active
+    if high > max_bearish_price or na(max_bearish_price)
+        max_bearish_price := high
+
+// Calcular a porcentagem de variação (direção contrária ao BOS)
+float min_bullish_pct = na
+float max_bearish_pct = na
+
+if not na(min_bullish_price) and not na(bullish_bos_price)
+    min_bullish_pct := ((min_bullish_price - bullish_bos_price) / bullish_bos_price) * 100
+
+if not na(max_bearish_price) and not na(bearish_bos_price)
+    max_bearish_pct := ((max_bearish_price - bearish_bos_price) / bearish_bos_price) * 100
+
+// Exibir a porcentagem na label do Bullish BOS
+if is_bullish_bos_active and bars_after_bullish_bos > 3 and close < bullish_bos_price
+    is_bullish_bos_active := false
+    label.new(bar_index, high, "Bullish BOS\nMax: " + str.tostring(max_bullish_percentage, "#.##") + "%\nMin %: " + str.tostring(min_bullish_pct, "#.##") + "%", 
+         color=color.green, textcolor=color.white, style=label.style_label_down, yloc=yloc.belowbar)
+
+// Exibir a porcentagem na label do Bearish BOS
+if is_bearish_bos_active and bars_after_bearish_bos > 3 and close > bearish_bos_price
+    is_bearish_bos_active := false
+    label.new(bar_index, low, "Bearish BOS\nMax: " + str.tostring(max_bearish_percentage, "#.##") + "%\nMin %: " + str.tostring(max_bearish_pct, "#.##") + "%", 
+         color=color.red, textcolor=color.white, style=label.style_label_up, yloc=yloc.abovebar)
