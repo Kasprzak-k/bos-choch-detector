@@ -2,7 +2,8 @@
 
 Indicador avançado para TradingView que revela a movimentação de "smart money" com métricas exclusivas de performance pós-BOS (Break of Structure).
 
-![Indicador]([https://example.com/screenshot.png](https://imgur.com/a/fTAbO1A))
+![BosEX3](https://github.com/user-attachments/assets/d0e451bf-0dc1-4eba-a897-3fd3df23624d)
+
 
 ## 🔍 Recursos Exclusivos
 
