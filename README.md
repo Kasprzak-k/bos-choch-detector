@@ -1,6 +1,6 @@
 # park bos choch detector
 
-Indicador avançado para TradingView que revela a movimentação de "smart money" com métricas exclusivas de performance pós-BOS (Break of Structure).
+**Indicador profissional para TradingView que desvenda o fluxo de ordens institucionais, combinando detecção de estrutura de mercado com análise quantitativa pós-BOS (Break of Structure).**
 
 ![BosEX3](https://github.com/user-attachments/assets/d0e451bf-0dc1-4eba-a897-3fd3df23624d)
 
